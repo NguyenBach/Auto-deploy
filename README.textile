@@ -1,29 +1,34 @@
-!http://logsol.github.com/Github-Auto-Deploy/images/Github-Auto-Deploy.png!
+Auto deploy V1
+By Bach Nguyen
+Fork from https://github.com/logsol/Github-Auto-Deploy
 
-h1. What is it?
+Auto deploy for bitbucket
 
-This is a small HTTP server written in python. 
-It allows you to have a version of your project installed, that will be updated automatically on each Github push.
+Hướng dẫn sử dụng
 
-To set it up, do the following:
-* install python
-* copy the GitAutoDeploy.conf.json.example to GitAutoDeploy.conf.json. This file will be gitignored and can be environment specific.
-* enter the matching for your project(s) in the GitAutoDeploy.conf.json file
-* start the server by typing "python GitAutoDeploy.py" 
-* to run it as a daemon add ==--daemon-mode==
-* On the Github page go to a repository, then "Admin", "Service Hooks", 
-"Post-Receive URLs" and add the url of your machine + port (e.g. http://example.com:8001).
-* Specify Content type as application/json
+Yêu cầu server:
+- Cài đặt git, python >= 2.7
 
-You can test hook delivery by clicking redeliver existing hook delieveries.
+Các bước thực hiện
+- B1: clone và deploy project muốn deploy trên server
+- B2: Clone https://github.com/NguyenBach/Auto-deploy
+- B3: coppy file GitAutoDeploy.conf.json.example thành file GitAutoDeploy.conf.json
+- B4: Mở file và sửa các thông tin của repositories
+    {
+		"url": "url của git",
+		"path": "thư mục deploy ở bước 1",
+		"deploy": "Có thể thêm câu lệnh sau khi deploy ví dụ: echo deploying"
+	}
+	Có thể sử dụng cho nhiều repo (chưa test kĩ )
+- B5: Chạy lệnh: nohup python -u GitAutoDeploy.py  --daemon-mode --quiet &
+    + nohup là lệnh để ghi lại kết quả chạy file vào file nohup.out
+    + --daemon-mode là để chạy ngầm
+    + -- quiet
+- B6: Enable cổng được config trong file config mặc định là 8001
+    Tùy theo HĐH của server mà câu lệnh khác nhau: ubuntu là ufw enable tcp:8001, centos là sudo firewall-cmd --permanent --add-port=8001/tcp && sudo firewall-cmd --reload
+- B7: vào setting của repo trên bitbucket -> add webhook với địa chỉ là {ip-server}:{port được cài đặt trong conf mặc định là 8001}
+Vậy là đã xong. Mỗi khi push lên bitbucket vào nhánh master là sẽ tự động cập nhật trên server
 
-h1. How this works
-
-When someone pushes changes into Github, it sends a json file to the service hook url. 
-It contains information about the repository that was updated.
-
-All it really does is match the repository urls to your local repository paths in the config file, 
-move there and run "git fetch".
-
-Additionally it runs a deploy bash command that you can add to the config file optionally.
-Make sure that you start the server as the user that is allowed to pull from the github repository.
+- Để dừng auto deploy:
+    + chuyển đến thư mục Auto-deploy trên server
+    + chạy lệnh python -u GitAutoDeploy.py -s (--stop)
