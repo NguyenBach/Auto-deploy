@@ -107,10 +107,19 @@ def main():
                 GitAutoDeploy.quiet = True
             if(arg == '-q' or arg == '--quiet'):
                 GitAutoDeploy.quiet = True
-                
+            if(arg == '-s' or arg == '--stop'):
+                file = open("pid.txt", "r+")
+                pid = file.read()
+                if (not pid.isdigit()):
+                    return
+                else:
+                    os.kill(int(pid),0)
+                    return
         if(GitAutoDeploy.daemon):
+            file = open("pid.txt", "r+")
             pid = os.fork()
             if(pid != 0):
+                file.write(pid)
                 sys.exit()
             os.setsid()
 
