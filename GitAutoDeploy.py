@@ -54,7 +54,7 @@ class GitAutoDeploy(BaseHTTPRequestHandler):
         self.branch = payload['push']['changes'][0]['new']['name']
         self.name = payload['repository']['name']
         self.owner = payload['repository']['owner']['username']
-        self.fullname = payload['repository']['full-name']
+        self.fullname = payload['repository']['full_name']
         self.url = payload['repository']['links']['html']['href']
         return self
 
