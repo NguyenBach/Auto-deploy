@@ -2,6 +2,7 @@
 	"port": 8001, 
 	"repositories": 
 	[{
+	    "deploy-branch": "master"
 		"url": "https://github.com/logsol/Test-Repo", 
 		"path": "/home/logsol/projects/Test-Repo",
 		"deploy": "echo deploying"

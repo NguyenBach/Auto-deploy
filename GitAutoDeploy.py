@@ -35,6 +35,7 @@ class GitAutoDeploy(BaseHTTPRequestHandler):
         return myClass.config
 
     def do_POST(self):
+        config = self.getConfig()
         event = self.headers.getheader('X-Event-Key')
         if event != 'repo:push':
             print('Not a push request')
@@ -42,10 +43,11 @@ class GitAutoDeploy(BaseHTTPRequestHandler):
             return
         self.respond(204)
         self.parseRequest()
-        paths = self.getMatchingPaths()
-        for path in paths:
-            self.fetch(path)
-            self.deploy(path)
+        self.getMatchingPaths()
+        deployBranch = config['deploy-branch']
+        if(self.branch == deployBranch):
+            self.fetch(self.path)
+            self.deploy(self.path)
 
     def parseRequest(self):
         length = int(self.headers.getheader('content-length'))
@@ -59,15 +61,14 @@ class GitAutoDeploy(BaseHTTPRequestHandler):
         return self
 
     def getMatchingPaths(self):
-        res = []
         config = self.getConfig()
         for repository in config['repositories']:
             if(repository['url'] == self.url):
-                res.append(repository['path'])
+                self.path = repository['url']
             else:
                 if (self.fullname in repository['url']):
-                    res.append(repository['path'])
-        return res
+                    self.path = repository['url']
+        return self
 
     def respond(self, code):
         self.send_response(code)
@@ -78,7 +79,7 @@ class GitAutoDeploy(BaseHTTPRequestHandler):
         if(not self.quiet):
             print "\nPost push request received"
             print 'Updating ' + path
-        call(['cd "' + path + '" && git fetch'], shell=True)
+        call(['cd "' + path + '" && git pull origin ' + self.branch], shell=True)
 
     def deploy(self, path):
         config = self.getConfig()
