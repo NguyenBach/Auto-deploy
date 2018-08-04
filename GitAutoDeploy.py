@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import json, urlparse, sys, os
+import json, urlparse, sys, os,signal
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 from subprocess import call
 
@@ -113,7 +113,7 @@ def main():
                 if (not pid.isdigit()):
                     return
                 else:
-                    os.kill(int(pid),0)
+                    os.kill(int(pid),signal.SIGKILL)
                     return
         if(GitAutoDeploy.daemon):
             file = open("pid.txt", "w+")
