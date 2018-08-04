@@ -35,43 +35,38 @@ class GitAutoDeploy(BaseHTTPRequestHandler):
         return myClass.config
 
     def do_POST(self):
-        length = int(self.headers.getheader('content-length'))
-        body = self.rfile.read(length)
-        print(body)
-        event = self.headers.getheader('X-Github-Event')
-        if event == 'ping':
-            if not self.quiet:
-                print 'Ping event received'
-            self.respond(204)
-            return
-        if event != 'push':
-            if not self.quiet:
-                print 'We only handle ping and push events'
+        event = self.headers.getheader('X-Event-Key')
+        if event != 'repo:push':
+            print('Not a push request')
             self.respond(304)
             return
-
         self.respond(204)
-
-        urls = self.parseRequest()
-        for url in urls:
-            paths = self.getMatchingPaths(url)
-            for path in paths:
-                self.fetch(path)
-                self.deploy(path)
+        self.parseRequest()
+        paths = self.getMatchingPaths()
+        for path in paths:
+            self.fetch(path)
+            self.deploy(path)
 
     def parseRequest(self):
         length = int(self.headers.getheader('content-length'))
         body = self.rfile.read(length)
         payload = json.loads(body)
-        self.branch = payload['ref']
-        return [payload['repository']['url']]
+        self.branch = payload['push']['changes'][0]['new']['branch']
+        self.name = payload['repository']['name']
+        self.owner = payload['repository']['owner']['username']
+        self.fullname = payload['repository']['full-name']
+        self.url = payload['repository']['links']['html']['href']
+        return self
 
-    def getMatchingPaths(self, repoUrl):
+    def getMatchingPaths(self):
         res = []
         config = self.getConfig()
         for repository in config['repositories']:
-            if(repository['url'] == repoUrl):
+            if(repository['url'] == self.url):
                 res.append(repository['path'])
+            else:
+                if (self.fullname in repository['url']):
+                    res.append(repository['path'])
         return res
 
     def respond(self, code):
