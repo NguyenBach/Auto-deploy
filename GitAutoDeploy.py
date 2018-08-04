@@ -119,7 +119,7 @@ def main():
             file = open("pid.txt", "w+")
             pid = os.fork()
             if(pid != 0):
-                file.write(pid)
+                file.write(str(pid))
                 sys.exit()
             os.setsid()
 
