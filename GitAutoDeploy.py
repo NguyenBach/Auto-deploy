@@ -114,6 +114,7 @@ def main():
                     return
                 else:
                     os.kill(int(pid),signal.SIGKILL)
+                    print 'Stop Auto deploy'
                     return
         if(GitAutoDeploy.daemon):
             file = open("pid.txt", "w+")
@@ -124,9 +125,9 @@ def main():
             os.setsid()
 
         if(not GitAutoDeploy.quiet):
-            print 'Github Autodeploy Service v0.2 started'
+            print 'Github Autodeploy Service  started'
         else:
-            print 'Github Autodeploy Service v 0.2 started in daemon mode'
+            print 'Github Autodeploy Service started in daemon mode'
              
         server = HTTPServer(('', GitAutoDeploy.getConfig()['port']), GitAutoDeploy)
         server.serve_forever()
