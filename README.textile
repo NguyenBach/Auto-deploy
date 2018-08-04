@@ -32,3 +32,9 @@ Vậy là đã xong. Mỗi khi push lên bitbucket vào nhánh master là sẽ t
 - Để dừng auto deploy:
     + chuyển đến thư mục Auto-deploy trên server
     + chạy lệnh "python -u GitAutoDeploy.py -s (--stop)"
+    
+Project này mới là bước đầu cho việc tạo ra một tool Auto-deploy hoàn chỉnh 
+Những việc cần làm thêm 
+- Sử dụng được không chỉ là cho bitbucket mà còn cho github, gitlab,...
+- Thêm công đoạn review xong mới push code
+- Thêm các tùy chọn thay đổi trên git thì mới pull code
