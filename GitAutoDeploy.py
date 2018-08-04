@@ -51,7 +51,7 @@ class GitAutoDeploy(BaseHTTPRequestHandler):
         length = int(self.headers.getheader('content-length'))
         body = self.rfile.read(length)
         payload = json.loads(body)
-        self.branch = payload['push']['changes'][0]['new']['branch']
+        self.branch = payload['push']['changes'][0]['new']['name']
         self.name = payload['repository']['name']
         self.owner = payload['repository']['owner']['username']
         self.fullname = payload['repository']['full-name']
