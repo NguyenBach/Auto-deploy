@@ -37,7 +37,7 @@ class GitAutoDeploy(BaseHTTPRequestHandler):
 
     def do_POST(self):
         config = self.getConfig()
-        if self.getEvent(config) != 1:
+        if self.getEvent() != 1:
             self.respond(304)
             return
         self.respond(204)
