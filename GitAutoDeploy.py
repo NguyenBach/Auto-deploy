@@ -43,7 +43,7 @@ class GitAutoDeploy(BaseHTTPRequestHandler):
         self.respond(204)
         if self.server == 'bitbucket':
             self.bitbucketRequest(config)
-        repo = self.getRepository(self.fullname)
+        repo = self.getRepository(config, self.fullname)
         if repo is None:
             print "Not found repository"
             return
