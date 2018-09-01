@@ -37,11 +37,12 @@ class GitAutoDeploy(BaseHTTPRequestHandler):
 
     def do_POST(self):
         config = self.getConfig()
+        self.server = config['git-server']
         if self.getEvent(config) != 1:
             self.respond(304)
             return
         self.respond(204)
-        self.server = config['git-server']
+
         deployBranch = config['deploy-branch']
         if self.server == 'bitbucket':
             self.bitbucketRequest(config)
@@ -52,10 +53,10 @@ class GitAutoDeploy(BaseHTTPRequestHandler):
             file.write(str(self.lastCommitHash))
 
     def do_GET(self):
-        self.respond('hello')
+        self.respond(200)
 
     def getEvent(self, config):
-        if config['git-server'] == 'bitbucket':
+        if self.server == 'bitbucket':
             event = self.headers.getheader('X-Event-Key')
             if event != 'repo:push':
                 print('Not a push request')
