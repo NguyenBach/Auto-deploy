@@ -15,7 +15,7 @@ class BitbucketParse:
         self.path = ''
 
     def parseRequest(self):
-        length = int(self.headers.getheader('content-length'))
+        length = int(self.header.getheader('content-length'))
         body = self.rfile.read(length)
         payload = json.loads(body)
         self.branch = payload['push']['changes'][0]['new']['name']
