@@ -2,7 +2,7 @@
 	"port": 8001, 
 	"repositories": 
 	[{
-	    "git-server" : "github"
+	    "full-name":"tintuc",
 	    "deploy-branch": "master",
 		"url": "https://github.com/logsol/Test-Repo", 
 		"path": "/home/logsol/projects/Test-Repo",

@@ -37,16 +37,17 @@ class GitAutoDeploy(BaseHTTPRequestHandler):
 
     def do_POST(self):
         config = self.getConfig()
-        print config
-        self.server = config['git-server']
         if self.getEvent(config) != 1:
             self.respond(304)
             return
         self.respond(204)
-
-        deployBranch = config['deploy-branch']
         if self.server == 'bitbucket':
             self.bitbucketRequest(config)
+        repo = self.getRepository(self.fullname)
+        if repo is None:
+            print "Not found repository"
+            return
+        deployBranch = repo['deploy-branch']
         if self.branch == deployBranch:
             self.fetch(self.path)
             self.deploy(self.path)
@@ -55,15 +56,27 @@ class GitAutoDeploy(BaseHTTPRequestHandler):
 
     def do_GET(self):
         self.respond(200)
+        self.wfile("hello")
 
-    def getEvent(self, config):
-        if self.server == 'bitbucket':
-            event = self.headers.getheader('X-Event-Key')
-            if event != 'repo:push':
-                print('Not a push request')
-                return 304
+    def getEvent(self):
+        event = self.headers.getheader('X-Event-Key')
+        if event is None:
+            event = self.headers.getheader('X-GitHub-Event')
+            self.server = 'github'
+        else:
+            self.server = 'bitbucket'
+        if 'push' not in event:
+            print('Not a push request')
+            return 304
+        else:
+            return 1
+
+    def getRepository(self, config, name):
+        for repository in config['repositories']:
+            if repository['full-name'] == name:
+                return repository
             else:
-                return 1
+                return None
 
     def bitbucketRequest(self, config):
         bitbucket = BitbucketParse(config, self.headers, self.rfile)
@@ -109,7 +122,7 @@ class GitAutoDeploy(BaseHTTPRequestHandler):
 
     def reset(self, path, name, branch):
         filename = name + "_" + branch + ".txt"
-        file = open(filename,'r')
+        file = open(filename, 'r')
         lastCommitHash = file.read()
         call(['cd "' + path + '" && git reset --hard ' + lastCommitHash], shell=True)
 
