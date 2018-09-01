@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
-import json, urlparse, sys, os,signal
+import json, urlparse, sys, os, signal
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 from subprocess import call
+from BitbucketParse import BitbucketParse
+
 
 class GitAutoDeploy(BaseHTTPRequestHandler):
-
     CONFIG_FILEPATH = './GitAutoDeploy.conf.json'
     config = None
     quiet = False
@@ -13,7 +14,7 @@ class GitAutoDeploy(BaseHTTPRequestHandler):
 
     @classmethod
     def getConfig(myClass):
-        if(myClass.config == None):
+        if myClass.config is None:
             try:
                 configString = open(myClass.CONFIG_FILEPATH).read()
             except:
@@ -25,50 +26,54 @@ class GitAutoDeploy(BaseHTTPRequestHandler):
                 sys.exit(myClass.CONFIG_FILEPATH + ' file is not valid json')
 
             for repository in myClass.config['repositories']:
-                if(not os.path.isdir(repository['path'])):
+                if (not os.path.isdir(repository['path'])):
                     sys.exit('Directory ' + repository['path'] + ' not found')
                 # Check for a repository with a local or a remote GIT_WORK_DIR
                 if not os.path.isdir(os.path.join(repository['path'], '.git')) \
-                   and not os.path.isdir(os.path.join(repository['path'], 'objects')):
+                        and not os.path.isdir(os.path.join(repository['path'], 'objects')):
                     sys.exit('Directory ' + repository['path'] + ' is not a Git repository')
 
         return myClass.config
 
     def do_POST(self):
         config = self.getConfig()
-        event = self.headers.getheader('X-Event-Key')
-        if event != 'repo:push':
-            print('Not a push request')
+        if self.getEvent(config) != 1:
             self.respond(304)
             return
         self.respond(204)
-        self.parseRequest()
-        self.getMatchingPaths()
+        self.server = config['git-server']
         deployBranch = config['deploy-branch']
-        if(self.branch == deployBranch):
+        if self.server == 'bitbucket':
+            self.bitbucketRequest(config)
+        if self.branch == deployBranch:
             self.fetch(self.path)
             self.deploy(self.path)
+            file = open(self.name + "_" + self.branch + ".txt", "w+")
+            file.write(str(self.lastCommitHash))
 
-    def parseRequest(self):
-        length = int(self.headers.getheader('content-length'))
-        body = self.rfile.read(length)
-        payload = json.loads(body)
-        self.branch = payload['push']['changes'][0]['new']['name']
-        self.name = payload['repository']['name']
-        self.owner = payload['repository']['owner']['username']
-        self.fullname = payload['repository']['full_name']
-        self.url = payload['repository']['links']['html']['href']
-        return self
+    def do_GET(self):
+        self.respond('hello')
 
-    def getMatchingPaths(self):
-        config = self.getConfig()
-        for repository in config['repositories']:
-            if(repository['url'] == self.url):
-                self.path = repository['url']
+    def getEvent(self, config):
+        if config['git-server'] == 'bitbucket':
+            event = self.headers.getheader('X-Event-Key')
+            if event != 'repo:push':
+                print('Not a push request')
+                return 304
             else:
-                if (self.fullname in repository['url']):
-                    self.path = repository['url']
-        return self
+                return 1
+
+    def bitbucketRequest(self, config):
+        bitbucket = BitbucketParse(config, self.headers, self.rfile)
+        bitbucket.parseRequest()
+        bitbucket.getMatchingPaths()
+        self.branch = bitbucket.branch
+        self.name = bitbucket.name
+        self.owner = bitbucket.owner
+        self.fullname = bitbucket.fullname
+        self.url = bitbucket.url
+        self.path = bitbucket.path
+        self.lastCommitHash = bitbucket.lastCommitHash
 
     def respond(self, code):
         self.send_response(code)
@@ -76,71 +81,80 @@ class GitAutoDeploy(BaseHTTPRequestHandler):
         self.end_headers()
 
     def fetch(self, path):
-        if(not self.quiet):
+        if (not self.quiet):
             print "\nPost push request received"
             print 'Updating ' + path
         call(['cd "' + path + '" && git pull origin ' + self.branch], shell=True)
+        print 'Completed'
 
     def deploy(self, path):
         config = self.getConfig()
         for repository in config['repositories']:
-            if(repository['path'] == path):
+            if repository['path'] == path:
                 if 'deploy' in repository:
                     branch = None
-                    if 'branch' in repository:
-                        branch = repository['branch']
+                    if 'deploy-branch' in repository:
+                        branch = repository['deploy-branch']
 
                     if branch is None or branch == self.branch:
-                        if(not self.quiet):
+                        if not self.quiet:
                             print 'Executing deploy command'
                         call(['cd "' + path + '" && ' + repository['deploy']], shell=True)
-                        
+
                     elif not self.quiet:
                         print 'Push to different branch (%s != %s), not deploying' % (branch, self.branch)
                 break
 
+    def reset(self, path, name, branch):
+        filename = name + "_" + branch + ".txt"
+        file = open(filename,'r')
+        lastCommitHash = file.read()
+        call(['cd "' + path + '" && git reset --hard ' + lastCommitHash], shell=True)
+
+
 def main():
     try:
         server = None
-        for arg in sys.argv: 
-            if(arg == '-d' or arg == '--daemon-mode'):
+        for arg in sys.argv:
+            if (arg == '-d' or arg == '--daemon-mode'):
                 GitAutoDeploy.daemon = True
                 GitAutoDeploy.quiet = True
-            if(arg == '-q' or arg == '--quiet'):
+            if (arg == '-q' or arg == '--quiet'):
                 GitAutoDeploy.quiet = True
-            if(arg == '-s' or arg == '--stop'):
+            if (arg == '-s' or arg == '--stop'):
                 file = open("pid.txt", "r")
                 pid = file.read()
                 if (not pid.isdigit()):
                     return
                 else:
-                    os.kill(int(pid),signal.SIGKILL)
+                    os.kill(int(pid), signal.SIGKILL)
                     print 'Stop Auto deploy'
                     return
-        if(GitAutoDeploy.daemon):
+        if (GitAutoDeploy.daemon):
             file = open("pid.txt", "w+")
             pid = os.fork()
-            if(pid != 0):
+            if (pid != 0):
                 file.write(str(pid))
                 sys.exit()
             os.setsid()
 
-        if(not GitAutoDeploy.quiet):
+        if (not GitAutoDeploy.quiet):
             print 'Github Autodeploy Service  started'
         else:
             print 'Github Autodeploy Service started in daemon mode'
-             
+
         server = HTTPServer(('', GitAutoDeploy.getConfig()['port']), GitAutoDeploy)
         server.serve_forever()
     except (KeyboardInterrupt, SystemExit) as e:
-        if(e): # wtf, why is this creating a new line?
+        if (e):  # wtf, why is this creating a new line?
             print >> sys.stderr, e
 
-        if(not server is None):
+        if (not server is None):
             server.socket.close()
 
-        if(not GitAutoDeploy.quiet):
+        if (not GitAutoDeploy.quiet):
             print 'Goodbye'
 
+
 if __name__ == '__main__':
-     main()
+    main()
