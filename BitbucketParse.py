@@ -29,10 +29,10 @@ class BitbucketParse:
     def getMatchingPaths(self):
         for repository in self.config['repositories']:
             if repository['url'] == self.url:
-                self.path = repository['url']
+                self.path = repository['path']
             else:
                 if self.fullname in repository['url']:
-                    self.path = repository['url']
+                    self.path = repository['path']
         return self
     def getLastCommit(self,payload):
         commits = payload['push']['changes'][0]['commits']
